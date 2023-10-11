@@ -6,7 +6,7 @@ import numpy as np
 
 # 1) Plot Solution, Loss, and MSE Information
 # function to plot the neural network vs exact solution
-def plot_solution(x_range, true_functs, trained_model, v_list, A_list, force, axis, head_to_track, is_A_time_dep, device):
+def plot_solution(x_range, true_functs, trained_model, v_list, A_list, force, axis, head_to_track, is_A_time_dep, is_force_time_dep, device):
     
     # function to extract the model results
     model_result = lambda t: trained_model(t)[0]
@@ -29,17 +29,11 @@ def plot_solution(x_range, true_functs, trained_model, v_list, A_list, force, ax
             yys.append(u[:, i].cpu().numpy())
 
             # find the true solution if A is not time independent
-            if not is_A_time_dep:
-              yts.append(true_functs(xx, 
-                                    v_list[head_idx].detach().cpu(), 
-                                    A_list[head_idx].detach().cpu(), 
-                                    force.detach().detach().cpu())[i])
-            # find the true solution if A is time dependent
-            else:
-              yts.append(true_functs(xx, 
-                                    v_list[head_idx].detach().cpu(), 
-                                    A_list[head_idx], 
-                                    force.detach().detach().cpu())[i])
+            
+            yts.append(true_functs(xx, 
+                                   v_list[head_idx].detach().cpu(), 
+                                   A_list[head_idx] if is_A_time_dep else A_list[head_idx].detach().cpu(),
+                                   force[head_idx] if is_force_time_dep else force[head_idx].detach().cpu())[i])
                              
     # plot the network solutions
     for i in range(num_curves):
@@ -60,7 +54,7 @@ def plot_solution(x_range, true_functs, trained_model, v_list, A_list, force, ax
     
 # function to plot the overall loss of the network solution
 def plot_total_loss(iterations, train_losses, axis, loss_label):
-    axis.plot(range(iterations), train_losses, label=loss_label)
+    axis.plot(range(len(train_losses)), train_losses, label=loss_label)
     axis.set_yscale("log")
     axis.set_title("Total Loss vs Iterations", fontsize=20)
     axis.set_xlabel('Iterations', fontsize=16)
@@ -72,7 +66,7 @@ def plot_total_loss(iterations, train_losses, axis, loss_label):
     
 # function to plot the MSE
 def plot_mse(iterations, mses, axis, head_to_track):
-    axis.plot(range(iterations), mses, label=f'MSE ({head_to_track})')
+    axis.plot(range(len(mses)), mses, label=f'MSE ({head_to_track})')
     axis.set_yscale("log")
     axis.set_title("MSE vs Iterations", fontsize=20)
     axis.set_xlabel('Iterations', fontsize=16)
@@ -81,6 +75,19 @@ def plot_mse(iterations, mses, axis, head_to_track):
     axis.tick_params(axis='y', labelsize=16)
     axis.grid()
     axis.legend(loc='best', fontsize=16)
+
+# plot head losses
+def plot_head_loss(iterations, head_loss, axis):
+  for _, head in enumerate(head_loss):
+    axis.plot(range(len(head_loss[head])), head_loss[head], label=f'{head}')
+  axis.set_yscale("log")
+  axis.set_title("Head loss vs Iterations", fontsize=20)
+  axis.set_xlabel('Iterations', fontsize=16)
+  axis.set_ylabel('Loss', fontsize=16)
+  axis.tick_params(axis='x', labelsize=14)
+  axis.tick_params(axis='y', labelsize=16)
+  axis.grid()
+  axis.legend(loc='best', fontsize=16)
     
 # wrapper function to plot the solution and the overall loss & MSE of the network solution
 def plot_loss_mse_and_solution(x_range, true_functs, iterations, trained_model, v_list, 
@@ -103,7 +110,7 @@ def plot_loss_mse_and_solution(x_range, true_functs, iterations, trained_model, 
 
 # wrapper function to plot all heads and the overall loss & MSE of the network solution
 def plot_loss_mse_and_all_solution(x_range, true_functs, iterations, trained_model, v_list, 
-                               A_list, force, train_losses, loss_label, mses, is_A_time_dep, device):
+                               A_list, force, train_losses, loss_label, mses, is_A_time_dep, is_force_time_dep, device):
     
     fig, axs = plt.subplots(2, 3,  tight_layout=True, figsize=(24, 16))
     
@@ -116,34 +123,38 @@ def plot_loss_mse_and_all_solution(x_range, true_functs, iterations, trained_mod
     plot_solution(x_range=x_range, true_functs=true_functs, 
                   trained_model=trained_model, v_list=v_list,
                   A_list=A_list, force=force, axis=axs[0, 2], 
-                  head_to_track='head 1', is_A_time_dep=is_A_time_dep, device=device)
+                  head_to_track='head 1', is_A_time_dep=is_A_time_dep,
+                  is_force_time_dep=is_force_time_dep, device=device)
     
     plot_solution(x_range=x_range, true_functs=true_functs, 
                   trained_model=trained_model, v_list=v_list,
                   A_list=A_list, force=force, axis=axs[1, 0], 
-                  head_to_track='head 2', is_A_time_dep=is_A_time_dep, device=device)
+                  head_to_track='head 2', is_A_time_dep=is_A_time_dep,
+                  is_force_time_dep=is_force_time_dep, device=device)
         
     plot_solution(x_range=x_range, true_functs=true_functs, 
                   trained_model=trained_model, v_list=v_list,
                   A_list=A_list, force=force, axis=axs[1, 1], 
-                  head_to_track='head 3', is_A_time_dep=is_A_time_dep, device=device)
+                  head_to_track='head 3', is_A_time_dep=is_A_time_dep,
+                  is_force_time_dep=is_force_time_dep, device=device)
             
     plot_solution(x_range=x_range, true_functs=true_functs, 
                   trained_model=trained_model, v_list=v_list,
                   A_list=A_list, force=force, axis=axs[1, 2], 
-                  head_to_track='head 4', is_A_time_dep=is_A_time_dep, device=device)
+                  head_to_track='head 4', is_A_time_dep=is_A_time_dep,
+                  is_force_time_dep=is_force_time_dep, device=device)
     
     plt.show()
 
 
 # 2) Plot Transfer Learned and Analytical Solutions
 # function to plot the transfer learned and analytical solutions on the same graph
-def plot_transfer_learned_and_analytical(H, W_out, t_eval, v, A, force, num_equations, true_funct, is_A_time_dep):
+def plot_transfer_learned_and_analytical(H, W_out, t_eval, v, A, force, num_equations, true_funct, is_A_time_dep, is_force_time_dep):
     
     fig, axs = plt.subplots(1, 2,  tight_layout=False, figsize=(16, 8))
     
     # compute the transfer learned solution
-    u_transfer = torch.matmul(H, W_out)
+    u_transfer = torch.matmul(H.double(), W_out.double())
 
     # plot the transfer learned solutions
     for i in range(num_equations):
@@ -152,14 +163,11 @@ def plot_transfer_learned_and_analytical(H, W_out, t_eval, v, A, force, num_equa
 
     # plot the true solutions
     for i in range(num_equations):
-      if not is_A_time_dep:
-        axs[0].plot(t_eval.detach().cpu().numpy(), 
-                true_funct(t_eval.detach().cpu().numpy(), v.detach().cpu(), A.detach().cpu(), force.detach().cpu())[i], 
-                label= f'True $U_{{{i+1}}}$', linewidth=2.5);
-      else:
-         axs[0].plot(t_eval.detach().cpu().numpy(), 
-                true_funct(t_eval.detach().cpu().numpy(), v.detach().cpu(), A, force.detach().cpu())[i], 
-                label= f'True $U_{{{i+1}}}$', linewidth=2.5);
+      axs[0].plot(t_eval.detach().cpu().numpy(), 
+                  true_funct(t_eval.detach().cpu().numpy(), v.detach().cpu(),
+                             A if is_A_time_dep else A.detach().cpu(),
+                             force if is_force_time_dep else force.detach().cpu())[i], 
+                  label= f'True $U_{{{i+1}}}$', linewidth=2.5);
 
     axs[0].set_title("$u(t)$ for Transfer Learned and Numerical Solutions",  fontsize=20)
     axs[0].set_xlabel("t", fontsize=16)
@@ -173,12 +181,13 @@ def plot_transfer_learned_and_analytical(H, W_out, t_eval, v, A, force, num_equa
     for i in range(num_equations):
       x_vals = t_eval.detach().cpu().numpy()
       predicted_vals = u_transfer[:, i, :].detach().cpu().numpy().squeeze()
-      if not is_A_time_dep: 
-        true_vals =  true_funct(t_eval.detach().cpu().numpy(), v.detach().cpu(), A.cpu(), force.detach().cpu())[i]
-      else:
-        true_vals =  true_funct(t_eval.detach().cpu().numpy(), v.detach().cpu(), A, force.detach().cpu())[i]
+      true_vals =  true_funct(t_eval.detach().cpu().numpy(), v.detach().cpu(),
+                              A if is_A_time_dep else A.cpu(),
+                              force if is_force_time_dep else force.detach().cpu())[i]
         
       residuals = (predicted_vals - true_vals) ** 2
+      print(f"mean {residuals.mean()}")
+      print(f"max {residuals.max()}")
       axs[1].plot(t_eval.detach().cpu().numpy(), residuals, label=f'Residual $U_{{{i+1}}}$')
 
     axs[1].set_title("Plot of Residuals vs Network Input $t$", fontsize=20)
@@ -210,4 +219,4 @@ def plot_residuals(H, W_out, t_eval, v, A, force, num_equations, true_funct, is_
     plt.ylabel('Residual Value', fontsize=16)
     plt.yscale('log')
     plt.grid()
-    plt.legend();
+    plt.legend()
