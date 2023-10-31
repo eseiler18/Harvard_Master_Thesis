@@ -24,7 +24,7 @@ class BuildNetwork(nn.Module):
             raise ValueError("Invalid activation function. Use 'tanh'.")
 
         # build the layers to use for the forward pass
-        self.hidden_layers = nn.ModuleList([nn.Linear(in_features, out_features)
+        self.hidden_layers = nn.ModuleList([nn.Linear(in_features, out_features, bias=True)
                                            for in_features, out_features in zip([input_size] + h_sizes[:-1], h_sizes)])
 
         # build n_heads output layers, each corresponding to different conditions during training

@@ -240,10 +240,8 @@ def plot_transfer_learned_and_analytical_non_linear(H, W_out, t_eval, v, num_equ
     fig, axs = plt.subplots(1, 2, tight_layout=False, figsize=(16, 8))
 
     # compute the transfer learned solution
-    try: 
-        u_transfer = W_out(H.double())
-    except:
-        u_transfer = W_out(H)
+    #u_transfer = torch.matmul(H, W_out)
+    u_transfer = W_out(H)
 
     # plot the transfer learned solutions
     for i in range(num_equations):
@@ -339,7 +337,6 @@ def plot_transfer_learned_and_analytical(H, W_out, t_eval, v, A, force, num_equa
     axs[1].legend()
 
 
-
 # function to plot only the residuals of the equations
 def plot_residuals(H, W_out, t_eval, v, A, force, num_equations, true_funct, is_A_time_dep):
 
@@ -361,3 +358,29 @@ def plot_residuals(H, W_out, t_eval, v, A, force, num_equations, true_funct, is_
     plt.yscale('log')
     plt.grid()
     plt.legend()
+
+
+def plot_transfer_loss(t_eval, transfer_loss):
+    fig, axis = plt.subplots(1, 2, figsize=(16, 5))
+    axis[0].plot(range(len(transfer_loss["loss"])), transfer_loss["loss"], label='Total Loss')
+    axis[0].plot(range(len(transfer_loss["loss"])), transfer_loss["L_0"], label='L_0')
+    axis[0].plot(range(len(transfer_loss["loss"])), transfer_loss["L_t_mean"], label='L_t mean')
+    axis[0].set_yscale("log")
+    axis[0].set_title("Transfer Loss", fontsize=20)
+    axis[0].set_xlabel('Iterations', fontsize=16)
+    axis[0].set_ylabel('Loss', fontsize=16)
+    axis[0].tick_params(axis='x', labelsize=14)
+    axis[0].tick_params(axis='y', labelsize=16)
+    axis[0].grid()
+    axis[0].legend(loc='best', fontsize=16)
+
+    for i, loss in transfer_loss["L_t"].items():
+        axis[1].plot(t_eval.detach().cpu().numpy(), loss, label=f'{i}')
+    axis[1].set_yscale("log")
+    axis[1].set_title("L_t term at during training", fontsize=20)
+    axis[1].set_xlabel('t', fontsize=16)
+    axis[1].set_ylabel('Loss', fontsize=16)
+    axis[1].tick_params(axis='x', labelsize=14)
+    axis[1].tick_params(axis='y', labelsize=16)
+    axis[1].grid()
+    axis[1].legend(loc='best', fontsize=16)
