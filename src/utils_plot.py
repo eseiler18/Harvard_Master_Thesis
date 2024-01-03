@@ -55,7 +55,7 @@ def plot_solution(x_range, true_functs, trained_model, v_list, A_list, force, ax
 
 
 # function to plot the overall loss of the network solution
-def plot_total_loss(iterations, train_losses, axis, loss_label):
+def plot_total_loss(train_losses, axis, loss_label):
     axis.plot(range(len(train_losses)), train_losses, label=loss_label)
     axis.set_yscale("log")
     axis.set_title("Total Loss vs Iterations", fontsize=20)
@@ -67,17 +67,17 @@ def plot_total_loss(iterations, train_losses, axis, loss_label):
     axis.legend(loc='best', fontsize=16)
 
 
-def plot_solution_non_linear(x_range, true_functs, trained_model, v_list, equation_list, axis, head_to_track, device):
+def plot_solution_non_linear(x_range, true_functs, trained_model, v_list, reparametrization, axis, head_to_track, device):
 
     # function to extract the model results
-    model_result = lambda t: trained_model(t)[0]
+    model_result = lambda t, reparametrization: trained_model(t, reparametrization)[0]
 
     # x values to predict on
     min_x, max_x = x_range
     xx = np.linspace(min_x, max_x, 200)[:, None]
 
     # find the model results
-    u = model_result(torch.tensor(xx, dtype=torch.float32, device=device))[head_to_track]
+    u = model_result(torch.tensor(xx, dtype=torch.float32, device=device), reparametrization)[head_to_track]
     # determine the number of curves to plot
     num_curves = u.shape[1]
     # store the true solutions and network solutions
@@ -113,7 +113,7 @@ def plot_solution_non_linear(x_range, true_functs, trained_model, v_list, equati
 
 
 # function to plot the MSE
-def plot_mse(iterations, mses, axis, head_to_track):
+def plot_mse(mses, axis, head_to_track):
     axis.plot(range(len(mses)), mses, label=f'MSE ({head_to_track})')
     axis.set_yscale("log")
     axis.set_title("MSE vs Iterations", fontsize=20)
@@ -126,7 +126,7 @@ def plot_mse(iterations, mses, axis, head_to_track):
 
 
 # plot head losses
-def plot_head_loss(iterations, head_loss, axis):
+def plot_head_loss(head_loss, axis):
     for _, head in enumerate(head_loss):
         axis.plot(range(len(head_loss[head])), head_loss[head], label=f'{head}')
     axis.set_yscale("log")
@@ -145,7 +145,7 @@ def plot_loss_mse_and_solution(x_range, true_functs, iterations, trained_model, 
 
     fig, axs = plt.subplots(1, 3, tight_layout=True, figsize=(24, 8))
 
-    plot_total_loss(iterations=iterations, train_losses=train_losses,
+    plot_total_loss(train_losses=train_losses,
                     axis=axs[0], loss_label=loss_label)
 
     plot_solution(x_range=x_range, true_functs=true_functs,
@@ -153,7 +153,7 @@ def plot_loss_mse_and_solution(x_range, true_functs, iterations, trained_model, 
                   A_list=A_list, force=force, axis=axs[1],
                   head_to_track=head_to_track, is_A_time_dep=is_A_time_dep, device=device)
 
-    plot_mse(iterations=iterations, mses=mses, axis=axs[2],
+    plot_mse(mses=mses, axis=axs[2],
              head_to_track=head_to_track)
 
     plt.show()
@@ -165,10 +165,10 @@ def plot_loss_mse_and_all_solution(x_range, true_functs, iterations, trained_mod
 
     fig, axs = plt.subplots(2, 3, tight_layout=True, figsize=(24, 16))
 
-    plot_total_loss(iterations=iterations, train_losses=train_losses,
+    plot_total_loss(train_losses=train_losses,
                     axis=axs[0, 0], loss_label=loss_label)
 
-    plot_mse(iterations=iterations, mses=mses, axis=axs[0, 1],
+    plot_mse(mses=mses, axis=axs[0, 1],
              head_to_track='head 1')
 
     plot_solution(x_range=x_range, true_functs=true_functs,
@@ -199,35 +199,33 @@ def plot_loss_mse_and_all_solution(x_range, true_functs, iterations, trained_mod
 
 
 # wrapper function to plot all heads and the overall loss & MSE of the network solution
-def plot_loss_mse_and_all_solution_non_linear(x_range, true_functs, iterations, trained_model, equation_list,
+def plot_loss_mse_and_all_solution_non_linear(x_range, true_functs, iterations, trained_model, reparametrization,
                                               v_list, train_losses, loss_label, mses, device):
 
     fig, axs = plt.subplots(2, 3, tight_layout=True, figsize=(24, 16))
 
-    plot_total_loss(iterations=iterations, train_losses=train_losses,
-                    axis=axs[0, 0], loss_label=loss_label)
+    plot_total_loss(train_losses=train_losses, axis=axs[0, 0], loss_label=loss_label)
 
-    plot_mse(iterations=iterations, mses=mses, axis=axs[0, 1],
-             head_to_track='head 1')
+    plot_mse(mses=mses, axis=axs[0, 1], head_to_track='head 1')
 
     plot_solution_non_linear(x_range=x_range, true_functs=true_functs,
                              trained_model=trained_model, v_list=v_list,
-                             equation_list=equation_list, axis=axs[0, 2],
+                             reparametrization=reparametrization, axis=axs[0, 2],
                              head_to_track='head 1', device=device)
 
     plot_solution_non_linear(x_range=x_range, true_functs=true_functs,
                              trained_model=trained_model, v_list=v_list,
-                             equation_list=equation_list, axis=axs[1, 0],
+                             reparametrization=reparametrization, axis=axs[1, 0],
                              head_to_track='head 2', device=device)
 
     plot_solution_non_linear(x_range=x_range, true_functs=true_functs,
                              trained_model=trained_model, v_list=v_list,
-                             equation_list=equation_list, axis=axs[1, 1],
+                             reparametrization=reparametrization, axis=axs[1, 1],
                              head_to_track='head 3', device=device)
 
     plot_solution_non_linear(x_range=x_range, true_functs=true_functs,
                              trained_model=trained_model, v_list=v_list,
-                             equation_list=equation_list, axis=axs[1, 2],
+                             reparametrization=reparametrization, axis=axs[1, 2],
                              head_to_track='head 4', device=device)
 
     plt.show()
