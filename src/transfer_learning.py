@@ -73,11 +73,13 @@ def analytically_compute_weights(dH_dt, H, H_0, t_eval, v, A, force, verbose=Tru
     M_inv = torch.linalg.pinv(M)
 
     # compute dH_dt * force
-    dH_dt_times_force = torch.matmul(dH_dt.mT, force if force.shape[1] == 1 else force.unsqueeze(2))
+    if callable(force):
+        force = force(t_eval.squeeze())
+    dH_dt_times_force = torch.matmul(dH_dt.mT, force if force.shape[-1] == 1 else force.unsqueeze(2))
     # dH_dt_times_force = torch.matmul(dH_dt.mT, torch.cat(force(t_eval.detach().cpu()), axis=1).unsqueeze(2).to(dev).double() if is_force_time_dep else force)
 
     # compute H * A.T * force
-    H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT, A.T), force if force.shape[1] == 1 else force.unsqueeze(2))
+    H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT, A.T), force if force.shape[-1] == 1 else force.unsqueeze(2))
     # H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT.double(), A.T.double()), torch.cat(force(t_eval.detach().cpu()), axis=1).unsqueeze(2).to(dev).double() if is_force_time_dep else force.double())
 
     # sum the force-contributing terms and add them to H_0.T * v
@@ -130,6 +132,7 @@ def compute_W_with_IC(M_inv, force_terms, v, H_0):
     start_time = time.time()
 
     rhs_terms = force_terms + torch.matmul(H_0.T, v)
+    #rhs_terms = force_terms + torch.matmul(H_0.T, v)
     # compute the output weights by W_out = M ^ -1 * H_0 * u_0
     W_out = torch.matmul(M_inv, rhs_terms)
 
@@ -139,17 +142,23 @@ def compute_W_with_IC(M_inv, force_terms, v, H_0):
 
 def compute_force_term(t_eval, A, force, H, dH_dt):
     # compute dH_dt * force
-    dH_dt_times_force = torch.matmul(dH_dt.mT, force if force.shape[1] == 1 else force.unsqueeze(2))
+    if callable(force):
+        force = force(t_eval.squeeze())
+    # compute dH_dt * force
+    # dH_dt_times_force = torch.matmul(dH_dt.mT, force if force.shape[-1] == 1 else force.unsqueeze(2))
+    dH_dt_times_force = torch.matmul(dH_dt.mT, force.unsqueeze(2))
     # dH_dt_times_force = torch.matmul(dH_dt.mT, torch.cat(force(t_eval.detach().cpu()), axis=1).unsqueeze(2).to(dev).double() if is_force_time_dep else force)
 
     # compute H * A.T * force
-    H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT, A.T), force if force.shape[1] == 1 else force.unsqueeze(2))
+    H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT, A.T), force.unsqueeze(2))
+    #H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT, A.T), force if force.shape[-1] == 1 else force.unsqueeze(2))
     # H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT.double(), A.T.double()), torch.cat(force(t_eval.detach().cpu()), axis=1).unsqueeze(2).to(dev).double() if is_force_time_dep else force.double())
 
     # sum the force-contributing terms and add them to H_0.T * v
     force_terms = dH_dt_times_force + H_times_A_T_times_f
     force_terms = force_terms.sum(axis=0)
     force_terms = force_terms / len(t_eval)
+    # return force_terms.squeeze()
     return force_terms
 
 

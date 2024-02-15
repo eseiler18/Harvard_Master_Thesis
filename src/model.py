@@ -84,8 +84,12 @@ class BuildNetworkNew(nn.Module):
             self.activation = nn.ReLU()
         elif activation == "elu":
             self.activation = nn.ELU()
+        elif activation == "celu":
+            self.activation = nn.CELU()
+        elif activation == "silu":
+            self.activation = nn.SiLU()
         else:
-            raise ValueError("Invalid activation function. Use 'tanh'.")
+            raise ValueError("Invalid activation function")
 
         # build the layers to use for the forward pass
         self.hidden_layers = nn.ModuleList([nn.Linear(in_features, out_features, bias=True)
@@ -116,7 +120,7 @@ class BuildNetworkNew(nn.Module):
                     u0 = self.IC_list
                 else:
                     raise ValueError(f"Need IC_list as a list os Tensor for reparametrization\n Here IC_list={self.IC_list}")
-                N0 = self.forward(torch.tensor([[0]], dtype=torch.float32, device=self.dev))[0][f"head {i + 1}"]
+                N0 = self.forward(torch.tensor([[0]], dtype=torch.float64, device=self.dev))[0][:, i, :]
                 result_i = result_i + ((u0.T - N0).expand(x.shape[0], -1) * torch.exp(-x))
             output.append(result_i)
 

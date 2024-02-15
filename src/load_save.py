@@ -1,7 +1,7 @@
 import json
 import torch
 import numpy as np
-from src.model import BuildNetwork_previous, BuildNetwork
+from src.model import BuildNetwork_previous, BuildNetwork, BuildNetworkNew
 
 path = r"D:\Emilien\Documents\Cours\Master_Thesis\Harvard_Master_Thesis\model_history/"
 
@@ -21,7 +21,10 @@ def save_model(trained_model, formatted_datetime_int, equation_name, name,
 
     history["A"] = [A.cpu().numpy().tolist() for A in A_list]
     history["v"] = [v.cpu().numpy().tolist() for v in v_list]
-    history["force"] = [f.cpu().numpy().tolist() for f in force_list]
+    if callable(force_list[0]):
+        history["force"] = None
+    else:
+        history["force"] = [f.cpu().numpy().tolist() for f in force_list]
     history["alpha_list"] = alpha_list if isinstance(alpha_list, list) else alpha_list.tolist()
 
     loss_hist["head"] = loss_hist["head"] if isinstance(loss_hist["head"], list) else loss_hist["head"].tolist()
@@ -48,15 +51,15 @@ def load_run_history(equation_name, model_file, device, prev):
         alpha_list = history["alpha_list"]
         A_list = [torch.from_numpy(np.array(A)).to(device).double() for A in history["A"]]
         v_list = [torch.from_numpy(np.array(v)).to(device).double() for v in history["v"]]
-        if isinstance(history["force"], str):
-            force = False
+        if history["force"] is None:
+            force = None
             print("Force change with time")
         else:
             force = torch.from_numpy(np.array(history["force"])).to(device).double()
         if prev:
             trained_model = BuildNetwork_previous(1, hid_lay[0], hid_lay[1], hid_lay[2], num_equations, num_heads).to(device, dtype=torch.double)
         else:
-            trained_model = BuildNetwork(1, [hid_lay[0], hid_lay[1], hid_lay[2]], num_equations, num_heads, device).to(device, dtype=torch.double)
+            trained_model = BuildNetworkNew(1, hid_lay, num_equations, num_heads, device, activation="silu", IC_list=v_list).to(device, dtype=torch.double)
         trained_model.load_state_dict(torch.load(path_equation + str(model_file)))
         trained_model.eval()
     return trained_model, x_range, iterations, hid_lay, num_equations, num_heads, loss_hist, alpha_list, A_list, v_list, force

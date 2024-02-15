@@ -29,9 +29,7 @@ def solve_perturbation_TL(beta, p, t_eval,
                           verbose, M_inv=None):
 
     # compute IC of the p systems
-    x0_initials = compute_initial(IC[0], beta, p)
-    v0_initials = compute_initial(IC[1], beta, p)
-    IC_pertubation = torch.tensor([[x0_initials], [v0_initials]], device=dev)
+    IC_pertubation = torch.tensor([[compute_initial(IC[i], beta, p)] for i in range(len(IC))], device=dev)
 
     # compute the inverse of the M matrix associate with the equation
 
@@ -59,7 +57,7 @@ def solve_perturbation_TL(beta, p, t_eval,
     # compute numerical solution of the first system (numercial solution bu perturbation)
     if compute_numerical_pert:
         numerical_pert = numerical_sol_fct(t_eval.detach().cpu().numpy(),
-                                           IC_pertubation.detach().cpu().numpy(),
+                                           IC_pertubation.detach().cpu().numpy() if IC_pertubation.shape[0] != 1 else IC_pertubation.detach().cpu().numpy().squeeze(1),
                                            A.detach().cpu().numpy(), force)
         # store the numerical solution
         numerical_pert_list = [numerical_pert]
@@ -87,8 +85,8 @@ def solve_perturbation_TL(beta, p, t_eval,
             start_time = time.time()
             fi_numerical = force_function_numerical(i, alpha, list_force_index, numerical_pert_list)
             numerical_pert_list.append(numerical_perturbation_fct(t_eval.detach().cpu(),
-                                                                  IC_pertubation.detach().cpu(),
-                                                                  A.detach().cpu(), fi_numerical))
+                                                                  IC_pertubation.detach().cpu().numpy() if IC_pertubation.shape[0] != 1 else IC_pertubation.detach().cpu().numpy().squeeze(1),
+                                                                  A.detach().cpu(), fi_numerical).y)
             if verbose:
                 print(f"Time to compute the perturbation numerical solution {time.time()-start_time:.2e}")
 
