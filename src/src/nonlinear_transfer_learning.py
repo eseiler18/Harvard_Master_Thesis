@@ -1,6 +1,11 @@
+from collections import defaultdict
 import time
 import torch
+import torch.nn as nn
+from tqdm.auto import trange
+import numpy as np
 from src.transfer_learning import compute_M_inv, compute_W_with_IC_and_force
+from src.loss import calc_loss_nonlinear
 
 
 def compute_initial(x0, beta, p):
@@ -110,3 +115,78 @@ def solve_perturbation_TL(beta, p, t_eval,
         numerical_pert_list = None
 
     return solution_PINNS, solution_numerical, PINNS_list, numerical_pert_list, total_time
+
+
+def GD_transfer_learning(iterations, x_range, N, equation_transfer, IC, num_equations,
+                         dev, hid_lay, pretrained_model, lr, optimizer_name,
+                         decay=True, gamma=0.1, reparametrization=False, tqdm_bool=False):
+
+    for i, pretrained_layer in enumerate(pretrained_model.hidden_layers):
+        if isinstance(pretrained_layer, nn.Linear):
+            for param in pretrained_layer.parameters():
+                param.requires_grad = False  # Freeze the layer
+    pretrained_model.multi_head_output = nn.ModuleList([nn.Linear(hid_lay[-1], num_equations)]).double()
+    pretrained_model.multi_head_output[0].bias = None
+    pretrained_model.n_heads = 1
+    pretrained_model.to(dev)
+
+    # set-up the optimizer
+    if optimizer_name == "LBFGS":
+        optimizer = torch.optim.LBFGS(pretrained_model.parameters(), history_size=100, max_iter=20, lr=lr)
+    if optimizer_name == "Adam":
+        optimizer = torch.optim.Adam(pretrained_model.parameters(), lr=lr)
+
+    # store loss and mse values
+    loss_history = defaultdict(list)
+    start_time = time.time()
+
+    # training loop
+    for i in trange(iterations) if tqdm_bool else range(iterations):
+
+        rng = np.random.default_rng()
+        x = torch.arange(x_range[0], x_range[1], 0.001, requires_grad=True, device=dev).double()
+        x = x[rng.choice(range(0, len(x)), size=N, replace=False)]
+        x = x.reshape(-1, 1)
+        x, _ = x.sort(dim=0)
+
+        global curr_loss
+        if optimizer_name == "LBFGS":
+            def closure():
+                optimizer.zero_grad()
+                global curr_loss
+                L, curr_loss = calc_loss_nonlinear(x, [equation_transfer], [IC], pretrained_model, numerical_solution=None, t_eval=None, device=dev, reparametrization=reparametrization)
+                if (i % 1 == 0):
+                    info_loss = f"Iterations {i}"
+                    for k, v in curr_loss.items():
+                        if k != "head":
+                            info_loss += f", {k} = {v}"
+                print(info_loss)
+                L.backward(retain_graph=True)
+                return L
+            optimizer.step(closure)
+
+        if optimizer_name == "Adam":
+            _, curr_loss = calc_loss_nonlinear(x, [equation_transfer], [IC], pretrained_model, numerical_solution=None, t_eval=None, device=dev, reparametrization=reparametrization)
+            if (i % 100 == 0):
+                info_loss = f"Iterations {i}"
+                for k, v in curr_loss.items():
+                    if k != "head":
+                        info_loss += f", {k} = {v}"
+                print(info_loss)
+            curr_loss['L_total'].backward()
+            if decay:
+                gamma = 0.95  # Adjust the decay factor accordingly
+                every = 50  # Adjust the decay interval accordingly
+                for param in pretrained_model.multi_head_output[0].parameters():
+                    param.grad *= (gamma**((i + 1) / every))
+            optimizer.step()
+            optimizer.zero_grad()
+
+        # store individual loss terms for plotting
+        loss_history['L_IC'].append(curr_loss['L_IC'].detach().item())
+        loss_history['L_ODE'].append(curr_loss['L_ODE'].detach().item())
+        loss_history['L_total'].append(curr_loss['L_total'].detach().item())
+
+    end_time = time.time()
+    total_time = end_time - start_time
+    return loss_history, pretrained_model, total_time

@@ -172,3 +172,5 @@ def compute_W_with_IC_and_force(t_eval, A, v, force, H, H_0, dH_dt, M_inv):
     W_out, _ = compute_W_with_IC(M_inv, force_terms, v, H_0)
     total_time = time.time() - start_time
     return W_out, total_time
+
+

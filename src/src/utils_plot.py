@@ -338,6 +338,69 @@ def plot_transfer_learned_and_analytical(H, W_out, t_eval, v, A, force, num_equa
     axs[1].legend()
 
 
+
+def plot_transfer_learned_LBFGS(H, W_out, t_eval, v, A, force, num_equations, true_funct, transfer_loss, reparametrization=False):
+    _, axs = plt.subplots(1, 3, tight_layout=True, figsize=(18, 5))
+
+    axs[0].plot(range(len(transfer_loss["L_total"])), transfer_loss["L_total"], label="$L_{TOT}$", color="b")
+    axs[0].set_yscale("log")
+    axs[0].set_title("Training Loss vs Iterations", fontsize=20)
+    axs[0].set_xlabel('Iterations', fontsize=16)
+    axs[0].set_ylabel('Loss', fontsize=16)
+    axs[0].tick_params(axis='x', labelsize=14)
+    axs[0].tick_params(axis='y', labelsize=16)
+    axs[0].grid()
+    axs[0].legend(loc='best', fontsize=16)
+
+    # compute the transfer learned solution
+
+    if H is not None:
+        u_transfer = torch.matmul(H.double(), W_out.double())
+    else:
+        u_transfer = W_out(t_eval, reparametrization=reparametrization)[0].mT
+
+    # plot the transfer learned solutions
+    for i in range(num_equations):
+        axs[1].plot(t_eval.detach().cpu().numpy()[::1],
+                    u_transfer[:, i, :].detach().cpu().numpy() if len(u_transfer.shape) == 3 else u_transfer[:, i].detach().cpu().numpy(),
+                    'x', markersize=8, label=f'Transfer Learned $y_{{{i+1}}}$', linewidth=3.5)
+
+    # plot the true solutions
+    for i in range(num_equations):
+        axs[1].plot(t_eval.detach().cpu().numpy(),
+                    true_funct(t_eval.detach().cpu().numpy(), v.detach().cpu(),
+                               A.detach().cpu(), force.detach().cpu() if not callable(force) else force)[i]
+                    if A is not None else true_funct(t_eval.detach().cpu().numpy())[..., i],
+                    label=f'True $y_{{{i+1}}}$', linewidth=2.5)
+
+    axs[1].set_title("$y(t)$ for PINNs Transfer \n and Numerical Solutions", fontsize=20)
+    axs[1].set_xlabel("t", fontsize=16)
+    axs[1].set_ylabel("$y(t)$", fontsize=16)
+    axs[1].tick_params(axis='x', labelsize=16)
+    axs[1].tick_params(axis='y', labelsize=16)
+    axs[1].grid()
+    axs[1].legend()
+
+    # plot the transfer learned solutions
+    for i in range(num_equations):
+        x_vals = t_eval.detach().cpu().numpy()
+        predicted_vals = u_transfer[:, i, :].detach().cpu().numpy().squeeze() if len(u_transfer.shape) == 3 else u_transfer[:, i].detach().cpu().numpy().squeeze(),
+        true_vals = true_funct(x_vals, v.detach().cpu(), A.cpu(), force.detach().cpu() if not callable(force) else force)[i] if A is not None else true_funct(x_vals)[..., i]
+
+        error = np.abs((predicted_vals - true_vals))
+        print(f"mean {error.mean()}")
+        print(f"max {error.max()}")
+        axs[2].plot(t_eval.detach().cpu().numpy().squeeze(), error.squeeze(), label=f'Error $y_{{{i+1}}}$')
+
+    axs[2].set_title("Absolute Error", fontsize=20)
+    axs[2].set_xlabel("$t$", fontsize=16)
+    axs[2].set_yscale('log')
+    axs[2].set_ylabel('Error Value', fontsize=16)
+    axs[2].tick_params(axis='x', labelsize=16)
+    axs[2].tick_params(axis='y', labelsize=16)
+    axs[2].grid()
+    axs[2].legend()
+
 # function to plot only the errors of the equations
 def plot_errors(H, W_out, t_eval, v, A, force, num_equations, true_funct):
 
