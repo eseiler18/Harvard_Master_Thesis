@@ -10,12 +10,12 @@ from src.model import BuildNetworkNew
 from src.load_save import save_model
 
 
-def run_model_new(iterations, x_range, lr, A_list, v_list, force, hid_lay, activation, num_equations, num_heads, sample_size, decay, dev, verbose, true_functs=None, save=False):
+def run_model(iterations, x_range, lr, A_list, IC_list, force, hid_lay, activation, num_equations, num_heads, sample_size, decay, dev, verbose, true_functs=None, save=False):
 
     assert num_equations > 0, 'num_equations must be >= 1'
-    assert len(v_list) == num_heads, 'num_heads must equal the length of v_list'
+    assert len(IC_list) == num_heads, 'num_heads must equal the length of IC_list'
     assert len(A_list) == num_heads, 'num_heads must equal the length of A_list'
-    assert len(v_list[0]) == num_equations, 'num_equations does not match equation set-up'
+    assert len(IC_list[0]) == num_equations, 'num_equations does not match equation set-up'
     assert hid_lay[-1] % num_equations == 0, 'last hidden layer does not evenly divide num_equations for transfer learning'
 
     # build the neural net model
@@ -40,7 +40,7 @@ def run_model_new(iterations, x_range, lr, A_list, v_list, force, hid_lay, activ
     if true_functs is not None:
         t_eval = torch.linspace(min_x, max_x, sample_size, device=dev, requires_grad=True).double()
         numerical_solution = []
-        for i, (A, v, f) in enumerate(zip(A_list, v_list, force)):
+        for i, (A, v, f) in enumerate(zip(A_list, IC_list, force)):
             numerical_solution.append(torch.tensor(true_functs(t_eval.detach().cpu().numpy(),
                                                    v.detach().cpu().numpy(),
                                                    A.detach().cpu().numpy(),
@@ -60,7 +60,7 @@ def run_model_new(iterations, x_range, lr, A_list, v_list, force, hid_lay, activ
         x, _ = x.sort(dim=0)
 
         # forward: compute loss
-        curr_loss = calc_loss_new(x, A_list, v_list, force, model, numerical_solution, t_eval, device=dev)
+        curr_loss = calc_loss_new(x, A_list, IC_list, force, model, numerical_solution, t_eval, device=dev)
 
         if (verbose) & (i % 100 == 0):
             info_loss = f"Iterations {i}"
@@ -99,7 +99,7 @@ def run_model_new(iterations, x_range, lr, A_list, v_list, force, hid_lay, activ
                 loss_history["head"] = torch.stack(loss_head, dim=0).cpu().numpy()
                 save_model(model, i, "VDP", "BIG_inference",
                            x_range, iterations, hid_lay, num_equations, num_heads, A_list,
-                           v_list, force, save, loss_history)
+                           IC_list, force, save, loss_history)
 
     # Stack all head loss
     loss_history["head"] = torch.stack(loss_head, dim=0).cpu().numpy()
@@ -112,14 +112,14 @@ def run_model_new(iterations, x_range, lr, A_list, v_list, force, hid_lay, activ
     return loss_history, model, total_time
 
 
-def run_model_non_linear(iterations, x_range, equation_list, v_list, lr, hid_lay, activation,
+def run_model_non_linear(iterations, x_range, equation_list, IC_list, lr, hid_lay, activation,
                          num_equations, num_heads, sample_size, decay, dev, verbose,
                          true_functs=None, reparametrization=False):
 
     # build the neural net model
     model = BuildNetworkNew(input_size=1, h_sizes=hid_lay, output_size=num_equations,
                             n_heads=num_heads, dev=dev, activation=activation,
-                            IC_list=v_list).to(dev, dtype=torch.double)
+                            IC_list=IC_list).to(dev, dtype=torch.double)
     # set-up the optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
@@ -155,7 +155,7 @@ def run_model_non_linear(iterations, x_range, equation_list, v_list, lr, hid_lay
         x, _ = x.sort(dim=0)
 
         # forward: compute loss
-        _, curr_loss = calc_loss_nonlinear(x, equation_list, v_list, model, numerical_solution, t_eval, reparametrization, device=dev)
+        _, curr_loss = calc_loss_nonlinear(x, equation_list, IC_list, model, numerical_solution, t_eval, reparametrization, device=dev)
 
         if (verbose) & (i % 100 == 0):
             info_loss = f"Iterations {i}"

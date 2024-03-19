@@ -21,7 +21,7 @@ def compute_derivative(u, t, num_u_vectors):
 
 
 # build the loss function
-def calc_loss_new(x, A_list, v_list, force, model, numerical_solution, t_eval, device):
+def calc_loss_new(x, A_list, IC_list, force, model, numerical_solution, t_eval, device):
 
     num_heads = len(A_list)
 
@@ -57,7 +57,7 @@ def calc_loss_new(x, A_list, v_list, force, model, numerical_solution, t_eval, d
     del du_dt, Au, forcing
 
     # Compute IC loss
-    f_boundary = torch.stack([torch.tensor([i[j] for j in range(v_list[0].shape[0])], dtype=torch.float64, device=device) for i in v_list])
+    f_boundary = torch.stack([torch.tensor([i[j] for j in range(IC_list[0].shape[0])], dtype=torch.float64, device=device) for i in IC_list])
     u_0 = model_result(torch.tensor([[0]], dtype=torch.float64, device=device))[0]
     boundary = u_0 - f_boundary
 
@@ -87,7 +87,7 @@ def calc_loss_new(x, A_list, v_list, force, model, numerical_solution, t_eval, d
 
 
 # build the loss function
-def calc_loss_nonlinear(x, equation_list, v_list, model, numerical_solution, t_eval, reparametrization, device):
+def calc_loss_nonlinear(x, equation_list, IC_list, model, numerical_solution, t_eval, reparametrization, device):
 
     num_heads = len(equation_list)
 
@@ -113,7 +113,7 @@ def calc_loss_nonlinear(x, equation_list, v_list, model, numerical_solution, t_e
 
     # Compute IC loss
     if ~reparametrization:
-        f_boundary = torch.stack([torch.tensor([i[j] for j in range(v_list[0].shape[0])], dtype=torch.float64, device=device) for i in v_list])
+        f_boundary = torch.stack([torch.tensor([i[j] for j in range(IC_list[0].shape[0])], dtype=torch.float64, device=device) for i in IC_list])
         u_0 = model_result(torch.tensor([[0]], dtype=torch.float64, device=device))[0]
         boundary = u_0 - f_boundary
     else:
