@@ -19,7 +19,7 @@ def run_model_new(iterations, x_range, lr, A_list, v_list, force, hid_lay, activ
     assert hid_lay[-1] % num_equations == 0, 'last hidden layer does not evenly divide num_equations for transfer learning'
 
     # build the neural net model
-    model = BuildNetworkNew(1, hid_lay, num_equations, num_heads, activation).to(dev, dtype=torch.double)
+    model = BuildNetworkNew(1, hid_lay, num_equations, num_heads, dev, activation=activation).to(dev, dtype=torch.double)
     # set-up the optimizer
     # optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)

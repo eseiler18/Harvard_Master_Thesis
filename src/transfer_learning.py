@@ -146,11 +146,15 @@ def compute_force_term(t_eval, A, force, H, dH_dt):
         force = force(t_eval.squeeze())
     # compute dH_dt * force
     # dH_dt_times_force = torch.matmul(dH_dt.mT, force if force.shape[-1] == 1 else force.unsqueeze(2))
-    dH_dt_times_force = torch.matmul(dH_dt.mT, force.unsqueeze(2))
+    if force.shape[0] != t_eval.shape[0]:
+        force = force.unsqueeze(0)
+    else:
+        force = force.unsqueeze(2)
+    dH_dt_times_force = torch.matmul(dH_dt.mT, force)
     # dH_dt_times_force = torch.matmul(dH_dt.mT, torch.cat(force(t_eval.detach().cpu()), axis=1).unsqueeze(2).to(dev).double() if is_force_time_dep else force)
 
     # compute H * A.T * force
-    H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT, A.T), force.unsqueeze(2))
+    H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT, A.T), force)
     #H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT, A.T), force if force.shape[-1] == 1 else force.unsqueeze(2))
     # H_times_A_T_times_f = torch.matmul(torch.matmul(H.mT.double(), A.T.double()), torch.cat(force(t_eval.detach().cpu()), axis=1).unsqueeze(2).to(dev).double() if is_force_time_dep else force.double())
 

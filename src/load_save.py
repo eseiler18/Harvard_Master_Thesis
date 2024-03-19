@@ -59,7 +59,7 @@ def load_run_history(equation_name, model_file, device, prev):
         if prev:
             trained_model = BuildNetwork_previous(1, hid_lay[0], hid_lay[1], hid_lay[2], num_equations, num_heads).to(device, dtype=torch.double)
         else:
-            trained_model = BuildNetworkNew(1, hid_lay, num_equations, num_heads, device, activation="silu", IC_list=v_list).to(device, dtype=torch.double)
+            trained_model = BuildNetworkNew(1, hid_lay, num_equations, num_heads, device, activation="tanh", IC_list=v_list).to(device, dtype=torch.double)
         trained_model.load_state_dict(torch.load(path_equation + str(model_file)))
         trained_model.eval()
     return trained_model, x_range, iterations, hid_lay, num_equations, num_heads, loss_hist, alpha_list, A_list, v_list, force

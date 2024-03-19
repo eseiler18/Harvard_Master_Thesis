@@ -48,12 +48,12 @@ def plot_solution(x_range, true_functs, trained_model, v_list, A_list, equation_
 
     # plot the network solutions
     for i in range(num_curves):
-        axis.plot(xx, yys[i], 'x', markersize=8, label=f'PINNS $y_{{{i+1}}}(t)$',
+        axis.plot(xx[:len(xx)//2], yys[i][:len(xx)//2], 'x', markersize=8, label=f'PINNS $y_{{{i+1}}}(t)$',
                   linewidth=3.5)
 
     # plot the true solutions
     for i in range(num_curves):
-        axis.plot(xx, yts[i].reshape(-1, 1), label=f'Numerical $y_{{{i+1}}}(t)$', linewidth=2.5)
+        axis.plot(xx[:len(xx)//2], yts[i].reshape(-1, 1)[:len(xx)//2], label=f'Numerical $y_{{{i+1}}}(t)$', linewidth=2.5)
 
     axis.set_title(f"Head {head_idx+1}", fontsize=20)
     axis.set_xlabel('$t$', fontsize=16)
@@ -61,7 +61,7 @@ def plot_solution(x_range, true_functs, trained_model, v_list, A_list, equation_
     axis.tick_params(axis='x', labelsize=14)
     axis.tick_params(axis='y', labelsize=16)
     axis.grid()
-    axis.legend(loc='best', fontsize=10)
+    #axis.legend(loc='best', fontsize=10)
 
 
 # function to plot the overall loss of the network solution
@@ -159,10 +159,10 @@ def plot_loss_and_all_solution(x_range, true_functs, trained_model, v_list,
                                equation_list=None, reparametrization=False):
 
     num_head = len(v_list)
-    a = 3
+    a = 5
     num_row = (num_head + 1) // a if ((num_head + 1)) % a == 0 else ((num_head + 1) // a) + 1
 
-    _, axs = plt.subplots(num_row, a, tight_layout=True, figsize=(16, num_row * 4))
+    _, axs = plt.subplots(num_row, a, tight_layout=True, figsize=(16, num_row * 3.4))
 
     plot_total_loss(train_losses=train_losses,
                     axis=axs[0, 0] if num_row != 1 else axs[0])
@@ -174,8 +174,11 @@ def plot_loss_and_all_solution(x_range, true_functs, trained_model, v_list,
         elif i == 1:
             col = 2
             row = 0
-        # elif i == 2:
-        #     col = 3
+        elif i == 2:
+            col = 3
+            row = 0
+        # elif i == 3:
+        #     col = 4
         #     row = 0
         else:
             row = (i - (a - 1)) // a + 1
@@ -185,10 +188,9 @@ def plot_loss_and_all_solution(x_range, true_functs, trained_model, v_list,
                       A_list=A_list, force=force, equation_list=equation_list,
                       axis=axs[row, col] if num_row != 1 else axs[col],
                       head_to_track=i if isinstance(trained_model, BuildNetworkNew) else f'head {i+1}',
-                      device=device, reparametrization=reparametrization
-                      )
+                      device=device, reparametrization=reparametrization)
 
-        # model_result = lambda t: trained_model(t)[0]
+        # model_result = lambda t: trained_model(t, reparametrization=reparametrization)[0]
         # min_x, max_x = x_range
         # xx = np.linspace(min_x, max_x, 200)[:, None]
         # u = model_result(torch.tensor(xx, dtype=torch.float64, device=device))[:, 0, :]
@@ -198,10 +200,14 @@ def plot_loss_and_all_solution(x_range, true_functs, trained_model, v_list,
         #     head_idx = 0
         #     for i in range(num_curves):
         #         yys.append(u[:, i].cpu().numpy())
-        #         yts.append(true_functs(xx,
-        #                                v_list[head_idx].detach().cpu(),
-        #                                A_list[head_idx].detach().cpu(),
-        #                                force[head_idx] if callable(force[head_idx]) else force[head_idx].detach().cpu())[i])
+        #         if equation_list is None:
+        #             yts.append(true_functs(xx,
+        #                        v_list[head_idx].detach().cpu(),
+        #                        A_list[head_idx].detach().cpu(),
+        #                        force[head_idx] if callable(force[head_idx]) else force[head_idx].detach().cpu())[i])
+        #         else:
+        #             yts.append(true_functs[head_idx](xx)[..., i])
+
         # for i in range(num_curves):
         #     axs[2].plot(xx.squeeze(), np.abs(yys[i] - yts[i]), markersize=8, label=f'$MAE$ $y_{{{i+1}}}$', linewidth=1.5)
         # axs[2].set_title("MAE between PINNs \n and numerical solution", fontsize=20)
@@ -211,14 +217,23 @@ def plot_loss_and_all_solution(x_range, true_functs, trained_model, v_list,
         # axs[2].tick_params(axis='y', labelsize=16)
         # axs[2].grid()
         # axs[2].set_yscale("log")
+        # yticks = [0.01, 0.0001, 0.000001, 0.00000001]
+        # axs[2].set_yticks(yticks)
+        # axs[2].set_yticklabels([f'$10^{{{int(np.log10(val))}}}$' for val in yticks])
         # axs[2].legend(loc='best', fontsize=8)
 
-    # plot the true solutions
-    # for i in range(2):
+    # # plot the true solutions
+    # for i in range(3):
     #     axs[-1, -1].plot([], [], 'x', markersize=8, label=f'PINNS $y_{{{i+1}}}(t)$', linewidth=3.5)
     #     axs[-1, -1].plot([], [], label=f'Numerical $y_{{{i+1}}}(t)$', linewidth=2.5)
-    # axs[-1, -1].axis('off')
+    axs[-1, -1].axis('off')
     # axs[-1, -1].legend(loc="center right", fontsize=18)
+
+    for i in range(2):
+        axs[-1, -2].plot([], [], 'x', markersize=8, label=f'PINNS $y_{{{i+1}}}(t)$', linewidth=3.5)
+        axs[-1, -2].plot([], [], label=f'Numerical $y_{{{i+1}}}(t)$', linewidth=2.5)
+    axs[-1, -2].axis('off')
+    axs[-1, -2].legend(loc="center right", fontsize=18)
 
     plt.show()
 
